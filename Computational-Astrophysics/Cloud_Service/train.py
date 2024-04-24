@@ -8,8 +8,8 @@ import time
 from models import Model
 from Project.Model.test import evaluate
 #from test import evaluate
-from _helpers import print_training_logs, save_best_parameters
-from losses import FocalLoss
+from Project.Model._helpers import print_training_logs, save_best_parameters
+from Project.Model.losses import FocalLoss
 
 
 def train_model(net: Model, **kwargs):
