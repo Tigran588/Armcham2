@@ -39,18 +39,91 @@ class ClassifierDefault(nn.Module):
         self.mp1 = nn.MaxPool2d(kernel_size=2, stride=2)
 
         self.conv2 = nn.Conv2d(depth_1, depth_1, kernel_size=self.ks, padding=1)
+        self.bn2 = nn.BatchNorm2d(depth_1)
         self.relu2 = nn.ReLU()
         self.mp2 = nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2))
 
         self.conv3 = nn.Conv2d(depth_1, depth_2, kernel_size=self.ks, padding=1)
+        # self.bn3 = nn.BatchNorm2d(depth_2)
         self.relu3 = nn.ReLU()
         self.mp3 = nn.MaxPool2d(kernel_size=(2, 1), stride=(2, 1))
 
         self.conv4 = nn.Conv2d(depth_2, depth_2, kernel_size=self.ks, padding=1)
+        self.bn4 = nn.BatchNorm2d(depth_2)
         self.relu4 = nn.ReLU()
         self.mp4 = nn.MaxPool2d(kernel_size=2, stride=2)
 
         self.conv5 = nn.Conv2d(depth_2, depth_2, kernel_size=self.ks, padding=1)
+        # self.bn5 = nn.BatchNorm2d(depth_2)
+        self.relu5 = nn.ReLU()
+        self.mp5 = nn.MaxPool2d(kernel_size=(2, 1), stride=(2, 1))
+
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(3840, 512)
+        self.relu6 = nn.ReLU()
+        self.dropout = nn.Dropout(0.5)
+        self.fc2 = nn.Linear(512, class_count)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        residual = x  # Save the input for the residual connection
+        x = self.conv1(x)
+        x = self.mp1(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu2(x)
+        x = self.mp2(x)
+        residual = x + residual  # Add the input (residual) to the output
+        x = self.conv3(residual)
+        # x = self.bn3(x)
+        x = self.relu3(x)
+        x = self.mp3(x)
+        x = self.conv4(x)
+        x = self.bn4(x)
+        x = self.relu4(x)
+        x = self.mp4(x)
+        residual = x + residual  # Add the input (residual) to the output
+        x = self.conv5(residual)
+        # x = self.bn5(x)
+        x = self.relu5(x)
+        x = self.mp5(x)
+        x = self.flatten(x)
+        x = self.fc1(x)
+        x = self.relu6(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
+        x = self.softmax(x)
+        return x
+
+
+class ImprovedClassifier(nn.Module):
+    def __init__(self, class_count, input_shape, n_channels=1, depth_1=128, depth_2=64, kernel_size=3):
+        super(ImprovedClassifier, self).__init__()
+
+        self.ks = kernel_size
+
+        self.conv1 = nn.Conv2d(n_channels, depth_1, kernel_size=self.ks, padding=1)
+        self.bn1 = nn.BatchNorm2d(depth_1)
+        self.relu1 = nn.ReLU()
+        self.mp1 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.conv2 = nn.Conv2d(depth_1, depth_1, kernel_size=self.ks, padding=1)
+        self.bn2 = nn.BatchNorm2d(depth_1)
+        self.relu2 = nn.ReLU()
+        self.mp2 = nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2))
+
+        self.conv3 = nn.Conv2d(depth_1, depth_2, kernel_size=self.ks, padding=1)
+        self.bn3 = nn.BatchNorm2d(depth_2)
+        self.relu3 = nn.ReLU()
+        self.mp3 = nn.MaxPool2d(kernel_size=(2, 1), stride=(2, 1))
+
+        self.conv4 = nn.Conv2d(depth_2, depth_2, kernel_size=self.ks, padding=1)
+        self.bn4 = nn.BatchNorm2d(depth_2)
+        self.relu4 = nn.ReLU()
+        self.mp4 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.conv5 = nn.Conv2d(depth_2, depth_2, kernel_size=self.ks, padding=1)
+        self.bn5 = nn.BatchNorm2d(depth_2)
         self.relu5 = nn.ReLU()
         self.mp5 = nn.MaxPool2d(kernel_size=(2, 1), stride=(2, 1))
 
@@ -63,17 +136,23 @@ class ClassifierDefault(nn.Module):
 
     def forward(self, x):
         x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu1(x)
         x = self.mp1(x)
         x = self.conv2(x)
+        x = self.bn2(x)
         x = self.relu2(x)
         x = self.mp2(x)
         x = self.conv3(x)
+        x = self.bn3(x)
         x = self.relu3(x)
         x = self.mp3(x)
         x = self.conv4(x)
+        x = self.bn4(x)
         x = self.relu4(x)
         x = self.mp4(x)
         x = self.conv5(x)
+        x = self.bn5(x)
         x = self.relu5(x)
         x = self.mp5(x)
         x = self.flatten(x)
@@ -297,7 +376,7 @@ class Model(nn.Module):
     def __init__(self, num_classes, input_shape, arch='default'):
         super(Model, self).__init__()
 
-        assert arch in ['default', 'default_prev', 'default_bn', 'mobilenet', 'resnet']
+        assert arch in ['default', 'default_prev', 'default_bn', 'mobilenet', 'resnet', 'ImprovedClassifier']
 
         if arch == 'default':
             self.classifier = Classifier(num_classes, input_shape)
@@ -307,6 +386,8 @@ class Model(nn.Module):
             self.classifier = ClassifierDefault(class_count=num_classes, input_shape=input_shape)
         elif arch == 'mobilenet':
             self.classifier = MobileNetV2(input_channel=1, n_classes=num_classes)
+        elif arch == "ImprovedClassifier":
+            self.classifier = ImprovedClassifier(num_classes, input_shape)
         else:
             self.classifier = ResNet(input_channel=1, n_classes=num_classes)
 
