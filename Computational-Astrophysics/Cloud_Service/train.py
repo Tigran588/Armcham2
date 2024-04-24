@@ -5,7 +5,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 import time
 
-from models import Model
+#from models import Model
+from Project.model.test import evaluate
 from test import evaluate
 from _helpers import print_training_logs, save_best_parameters
 from losses import FocalLoss
